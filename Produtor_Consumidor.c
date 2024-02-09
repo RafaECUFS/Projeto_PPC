@@ -19,6 +19,7 @@
 
 typedef struct Clock{ //Define estrutura de relógio
    int T1, T2,T3;
+   int preenchido;
    struct Clock* prox;
 }RegVet;
 typedef struct{ //Define fila de relógios
@@ -33,6 +34,7 @@ void Consome_Relogio(Fila_Clock* fila){
     
     fila->cauda->prox=novo_clock;
     lista->cauda=novo_clock;//cauda aponta para novo elemento inserido
+    lista->cauda->preenchido=0; //elemento foi criado mas não atribuiu nenhum valor
 
     printf("[%d, %d, %d]\n", fila->cabeca->T1, fila->cabeca->T2,fila->cabeca->T3);
     
