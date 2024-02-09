@@ -30,10 +30,14 @@ void cria_fila(Fila_Clock* fila){//Define inicio da fila
 }
 void Consome_Relogio(Fila_Clock* fila){
     Fila_Clock* novo_clock = malloc(sizeof(RegVet));
-    
+    RegVet* cabeca_temp;
+    cabeca_temp = &(fila->cabeca);
     fila->cauda->prox=novo_clock;
-    lista->cauda=novo_clock;//cauda aponta para novo elemento inserido
+    fila->cauda=novo_clock;//cauda aponta para novo elemento inserido
+    fila->cauda->preenchido=0;//rastrear se houve modificação
 
     printf("[%d, %d, %d]\n", fila->cabeca->T1, fila->cabeca->T2,fila->cabeca->T3);
-    
+    fila->cabeca=fila->cabeca->prox;
+    free(cabeca_temp);
+    cabeca_temp=NULL;
 }
