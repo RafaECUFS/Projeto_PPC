@@ -29,13 +29,41 @@ typedef struct{ //Define fila de relógios
 void cria_fila(Fila_Clock* fila){//Define inicio da fila
     Fila_Clock->inicio=NULL;
 }
-void Consome_Relogio(Fila_Clock* fila){
-    Fila_Clock* novo_clock = malloc(sizeof(RegVet));
-    
-    fila->cauda->prox=novo_clock;
-    lista->cauda=novo_clock;//cauda aponta para novo elemento inserido
-    lista->cauda->preenchido=0; //elemento foi criado mas não atribuiu nenhum valor
+void Produz_Relogio(Fila_Clock* fila){
+    //cria relogio e atribui valores
+    RegVet* novo_clock=NULL;
+    novo_clock = malloc(sizeof(RegVet));
+    novo_clock->T1=rand()%100;
+    novo_clock->T2=rand()%100;
+    novo_clock->T3=rand()%100;
+    novo_clock->preenchido = 1;
 
-    printf("[%d, %d, %d]\n", fila->cabeca->T1, fila->cabeca->T2,fila->cabeca->T3);
+    //caso a fila esteja preenchida com mais de um elemento
+    if(fila->cabeca!=NULL && fila->cabeca!=fila->cauda){
+        fila->cauda->prox=novo_clock;
+        fila->cauda=novo_clock;
+    }
+    //caso fila vazia
+    else if(fila->cabeca==NULL){
+        fila->cabeca=novo_clock;
+        fila->cauda=novo_clock;
+    }
+
+    //caso cabeca==cauda (apenas 1 elemento)
+    else{
+        fila->cabeca->prox=novo_clock;
+        fila->cauda=novo_clock;//cauda aponta para novo elemento inserido
+        }
+
+    printf("Relogio produzido: [%d, %d, %d]\n", fila->cauda->T1, fila->cauda->T2,fila->cauda->T3);
     
+}
+void Consome_Relogio(Fila_Clock* fila){
+    printf("Relogio consumido: [%d, %d, %d]\n", fila->cabeca->T1, fila->cabeca->T2,fila->cabeca->T3);
+    Fila_Clock* temp_clock;//relogio temporário pra guardr referencia
+    
+    temp_clock=fila->cabeca;
+    fila->cabeca=fila->cabeca->prox;//cabeca aponta pro próximo valor da fila
+    free(temp_clock); //libera espaço
+    temp_clock=NULL;
 }
