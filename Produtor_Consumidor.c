@@ -15,7 +15,7 @@
 #include <semaphore.h>
 #include <time.h>
 #define THREAD_NUM 6    // Tamanho do pool de threads
-//BUFFER_SIZE 20 // Númermo máximo de tarefas enfileiradas
+#define BUFFER_SIZE 20 // Númermo máximo de tarefas enfileiradas
 
 typedef struct Clock{ //Define estrutura de relógio
    int T1, T2,T3;
@@ -24,12 +24,32 @@ typedef struct Clock{ //Define estrutura de relógio
 }RegVet;
 typedef struct{ //Define fila de relógios
     RegVet* cabeca, *cauda;
+    int tamanho_fila; //Coloquei um marcador do tamanho da fila
 }Fila_Clock;
+
+//Para o pthreads--------------------------------------
+int index_buffer_clock_count = 0;
+
+pthread_mutex_t mutex;
+
+pthread_cond_t condFull;
+pthread_cond_t condEmpty;
+//Para o pthreads--------------------------------------
+
+
 
 void cria_fila(Fila_Clock* fila){//Define inicio da fila
     Fila_Clock->inicio=NULL;
 }
 void Produz_Relogio(Fila_Clock* fila, int index_buffer){
+    pthread_mutex_lock(&mutex);
+
+    while (fila->tamanho_lista == BUFFER_SIZE){
+       pthread_cond_wait(&condFull, &mutex);
+    }
+    
+    
+    
     //cria relogio e atribui valores
     RegVet* novo_clock=NULL;
     novo_clock = malloc(sizeof(RegVet));
@@ -37,6 +57,7 @@ void Produz_Relogio(Fila_Clock* fila, int index_buffer){
     novo_clock->T2=rand()%100;
     novo_clock->T3=rand()%100;
     novo_clock->preenchido = ++index_buffer; //se index_buffer==20: bloqueia produção
+    fila->tamanho_fila++;
 
     //caso a fila esteja preenchida com mais de um elemento
     if(fila->cabeca!=NULL && fila->cabeca!=fila->cauda){
@@ -57,8 +78,20 @@ void Produz_Relogio(Fila_Clock* fila, int index_buffer){
 
     printf("Relogio produzido: [%d, %d, %d]\n", fila->cauda->T1, fila->cauda->T2,fila->cauda->T3);
     
+    
+    
+
+    pthread_mutex_unlock(&mutex);
+    pthread_cond_signal(&condEmpty);
 }
 void Consome_Relogio(Fila_Clock* fila,int index_buffer){
+    pthread_mutex_lock(&mutex);
+   
+    while (fila->tamanho_fila == 0){
+       pthread_cond_wait(&condEmpty, &mutex);
+    }
+   
+   
     printf("Relogio consumido: [%d, %d, %d]\n", fila->cabeca->T1, fila->cabeca->T2,fila->cabeca->T3);
     Fila_Clock* temp_clock;//relogio temporário pra guardr referencia
     
@@ -67,4 +100,41 @@ void Consome_Relogio(Fila_Clock* fila,int index_buffer){
     free(temp_clock); //libera espaço
     temp_clock=NULL;
     index_buffer--;
+    fila->tamanho_fila--;
+    
+    
+    pthread_mutex_unlock(&mutex);
+    pthread_cond_signal(&condFull);
+}
+
+
+
+
+
+void *startThread(void* args){
+   long id = (long) args; 
+   while (1){ 
+      RegVet clock_ = Consome_Relogio();
+      executeTask(&task, id);
+      sleep(rand()%5);
+   }
+   return NULL;
+}   
+
+/*--------------------------------------------------------------------*/
+int main(int argc, char* args[]){
+    pthread_mutex_init(&mutex, NULL);
+   
+    pthread_cond_init(&condEmpty, NULL);
+    pthread_cond_init(&condFull, NULL);
+
+    pthread_t thread[THREAD_NUM]; 
+    long i;
+    for (i = 0; i < THREAD_NUM; i++){  
+       if (pthread_create(&thread[i], NULL, &startThread, (void*) i) != 0) {
+          perror("Failed to create the thread");
+       }  
+    }
+   
+    return 0;
 }
