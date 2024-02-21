@@ -115,7 +115,6 @@ void *startThread(void* args){
    long id = (long) args; 
    while (1){ 
       RegVet clock_ = Consome_Relogio();
-      executeTask(&task, id);
       sleep(rand()%5);
    }
    return NULL;
