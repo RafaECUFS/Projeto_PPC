@@ -1,12 +1,30 @@
 /* File:  
- *    pth_pool.c
+ *    Produtor_Consumidor.c
  *
  * Purpose:
  *    Implementação de um pool de threads
  *
  *
- * Compile:  gcc -g -Wall -o pth_pool pth_pool.c -lpthread -lrt
- * Usage:    ./pth_hello
+ * Compile:  gcc -g -Wall -o Produtor_Consumidor Produtor_Consumidor.c -lpthread -lrt
+ * Usage:    ./Produtor_Consumidor
+ 
+Com base no exemplo pth_pool.c, implemente o modelo de comunicação entre threads 
+Produtor/Consumidor usando uma fila intermediária controlada por variáveis de condição. 
+Enquanto um grupo de 3 threads produzirá relógios vetoriais que serão colocados na fila, 
+outro grupo de 3 threads consumirá esses relógios da fila e os imprimirá na saída padrão. 
+Para verificar o uso correto das variáveis de condição na sua tarefa de sincronização 
+entre produtores e consumidores, crie dois cenários de teste:
+ 
+  Cenário onde a fila ficará cheia: Threads produtoras produzem relógios na fila em uma 
+  taxa maior que as threads consumidoras. Por exemplo, em quanto cada thread produtora 
+  produz 1 relógio na fila a cada segundo, cada thread consome 1 relógio da fila a cada 
+  dois segundos. 
+
+  Cenário onde a fila ficará vazia: Threads produtoras produzem relógios na fila em uma
+  taxa menor que as threads consumidoras. Por exemplo, em quanto cada thread produtora 
+  produz 1 relógio na fila a cada 2 segundos, cada thread consome 1 relógio da fila a
+  cada 1 segundo. 
+ 
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -22,13 +40,14 @@ typedef struct Clock{ //Define estrutura de relógio
    int preenchido;
    struct Clock* prox;
 }RegVet;
+
 typedef struct{ //Define fila de relógios
     RegVet* cabeca, *cauda;
-    int tamanho_fila; //Coloquei um marcador do tamanho da fila
+    int tamanho_fila; //Marcador do tamanho da fila
 }Fila_Clock;
 
 //Para o pthreads--------------------------------------
-int index_buffer_clock_count = 0;
+int index_buffer = 0;
 
 pthread_mutex_t mutex;
 
@@ -37,14 +56,13 @@ pthread_cond_t condEmpty;
 //Para o pthreads--------------------------------------
 
 
+Fila_Clock fila_ = {NULL,NULL,0};
 
-void cria_fila(Fila_Clock* fila){//Define inicio da fila
-    Fila_Clock->inicio=NULL;
-}
-void Produz_Relogio(Fila_Clock* fila, int index_buffer){
+
+void Produz_Relogio(Fila_Clock *fila){
     pthread_mutex_lock(&mutex);
 
-    while (fila->tamanho_lista == BUFFER_SIZE){
+    while (fila->tamanho_fila == BUFFER_SIZE){
        pthread_cond_wait(&condFull, &mutex);
     }
     
@@ -84,7 +102,8 @@ void Produz_Relogio(Fila_Clock* fila, int index_buffer){
     pthread_mutex_unlock(&mutex);
     pthread_cond_signal(&condEmpty);
 }
-void Consome_Relogio(Fila_Clock* fila,int index_buffer){
+
+void Consome_Relogio(Fila_Clock *fila,int id){
     pthread_mutex_lock(&mutex);
    
     while (fila->tamanho_fila == 0){
@@ -92,8 +111,8 @@ void Consome_Relogio(Fila_Clock* fila,int index_buffer){
     }
    
    
-    printf("Relogio consumido: [%d, %d, %d]\n", fila->cabeca->T1, fila->cabeca->T2,fila->cabeca->T3);
-    Fila_Clock* temp_clock;//relogio temporário pra guardr referencia
+    printf("(Thread %d)Relogio consumido: [%d, %d, %d]\n", id, fila->cabeca->T1, fila->cabeca->T2,fila->cabeca->T3);
+    RegVet* temp_clock;//relogio temporário pra guardr referencia
     
     temp_clock=fila->cabeca;
     fila->cabeca=fila->cabeca->prox;//cabeca aponta pro próximo valor da fila
@@ -114,11 +133,11 @@ void Consome_Relogio(Fila_Clock* fila,int index_buffer){
 void *startThread(void* args){
    long id = (long) args; 
    while (1){ 
-      RegVet clock_ = Consome_Relogio();
-      sleep(rand()%5);
+      Consome_Relogio(&fila_,id);
+      sleep(rand()%2);
    }
    return NULL;
-}   
+}
 
 /*--------------------------------------------------------------------*/
 int main(int argc, char* args[]){
@@ -130,10 +149,25 @@ int main(int argc, char* args[]){
     pthread_t thread[THREAD_NUM]; 
     long i;
     for (i = 0; i < THREAD_NUM; i++){  
-       if (pthread_create(&thread[i], NULL, &startThread, (void*) i) != 0) {
+        if (pthread_create(&thread[i], NULL, &startThread, (void*) i) != 0)
+        {
           perror("Failed to create the thread");
-       }  
+        }  
     }
+    
+   for (i = 0; i < 50; i++){
+      Produz_Relogio(&fila_);
+   }
+   
+   for (i = 0; i < THREAD_NUM; i++){  
+      if (pthread_join(thread[i], NULL) != 0) {
+         perror("Failed to join the thread");
+      }  
+   }
+   
+   pthread_mutex_destroy(&mutex);
+   pthread_cond_destroy(&condEmpty);
+   pthread_cond_destroy(&condFull);
    
     return 0;
 }
