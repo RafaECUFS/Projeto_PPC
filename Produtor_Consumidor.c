@@ -130,15 +130,29 @@ void Consome_Relogio(Fila_Clock *fila,int id){
 
 
 
-void *startThread(void* args){
+void *startProdutorThread(void* args){
    long id = (long) args; 
    while (1){ 
-      Consome_Relogio(&fila_,id);
+      Produz_Relogio(&fila_);
       sleep(rand()%2);
    }
    return NULL;
 }
 
+void *startConsumidorThread(void* args){
+   long id = (long) args; 
+   while (1){ 
+      Consome_Relogio(&fila_, id);
+      sleep(rand()%2);
+   }
+   return NULL;
+}
+void Inicia_Producao_Inicial(Fila_Clock *fila) {
+    int i;
+    for (i = 0; i < 50; i++) {
+        Produz_Relogio(fila);
+    }
+}
 /*--------------------------------------------------------------------*/
 int main(int argc, char* args[]){
     pthread_mutex_init(&mutex, NULL);
@@ -146,24 +160,36 @@ int main(int argc, char* args[]){
     pthread_cond_init(&condEmpty, NULL);
     pthread_cond_init(&condFull, NULL);
 
-    pthread_t thread[THREAD_NUM]; 
+    pthread_t produtorThread[THREAD_NUM / 2];
+    pthread_t consumidorThread[THREAD_NUM / 2]; 
     long i;
-    for (i = 0; i < THREAD_NUM; i++){  
-        if (pthread_create(&thread[i], NULL, &startThread, (void*) i) != 0)
+    for (i = 0; i < THREAD_NUM / 2; i++){  
+        if (pthread_create(&produtorThread[i], NULL, &startProdutorThread, (void*) i) != 0)
         {
-          perror("Failed to create the thread");
+          perror("Failed to create the producer thread");
+        }  
+    }
+
+    for (i = 0; i < THREAD_NUM / 2; i++){  
+        if (pthread_create(&consumidorThread[i], NULL, &startConsumidorThread, (void*) i) != 0)
+        {
+          perror("Failed to create the consumer thread");
         }  
     }
     
-   for (i = 0; i < 50; i++){
-      Produz_Relogio(&fila_);
-   }
+   Inicia_Producao_Inicial(&fila_);
    
-   for (i = 0; i < THREAD_NUM; i++){  
-      if (pthread_join(thread[i], NULL) != 0) {
-         perror("Failed to join the thread");
-      }  
-   }
+   for (i = 0; i < THREAD_NUM / 2; i++){  
+        if (pthread_join(produtorThread[i], NULL) != 0) {
+            perror("Failed to join the producer thread");
+        }  
+    }
+
+    for (i = 0; i < THREAD_NUM / 2; i++){  
+        if (pthread_join(consumidorThread[i], NULL) != 0) {
+            perror("Failed to join the consumer thread");
+        }  
+    }
    
    pthread_mutex_destroy(&mutex);
    pthread_cond_destroy(&condEmpty);
